@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>National Debt Solver</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0a0a0c',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        html.dark ::-webkit-scrollbar-thumb { background: #27272a; }
+        html.dark ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Hide number input spinners for cleaner bounds UI */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .donut-segment {
+            transition: stroke-dasharray 0.5s ease, stroke-dashoffset 0.5s ease;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-zinc-300 font-sans selection:bg-cyan-500/30 min-h-screen transition-colors duration-300 relative">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 dark:bg-white text-white dark:text-slate-900 px-5 py-3 rounded-xl shadow-2xl z-[100] flex items-center gap-3 font-medium border border-slate-700 dark:border-slate-200 pointer-events-none">
+        <i data-lucide="info" id="toastIcon" class="w-5 h-5"></i>
+        <span id="toastMsg">Message</span>
+    </div>
+
+    <!-- Top Navigation Bar -->
+    <nav class="border-b border-slate-200 dark:border-zinc-800/60 bg-white/80 dark:bg-darkbg/80 backdrop-blur-md sticky top-0 z-50 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-cyan-100 dark:bg-cyan-500/10 p-2 rounded-lg border border-cyan-200 dark:border-cyan-500/20">
+                    <i data-lucide="activity" class="w-5 h-5 text-cyan-600 dark:text-cyan-400"></i>
+                </div>
+                <h1 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">AreWe<span class="text-cyan-600 dark:text-cyan-400">Cooked?</span></h1>
+            </div>
+            
+            <div class="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar">
+                <button id="themeToggleBtn" class="p-2 rounded-md transition-all hover:bg-slate-100 dark:hover:bg-zinc-800/50 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 flex-shrink-0" title="Toggle Light/Dark Mode">
+                    <i data-lucide="sun" id="sunIcon" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="moon" id="moonIcon" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+                <div class="w-px h-6 bg-slate-200 dark:bg-zinc-700 mx-1 flex-shrink-0"></div>
+                <button id="toggleSettingsBtn" class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all hover:bg-slate-100 dark:hover:bg-zinc-800/50 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 flex-shrink-0">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Baseline Settings</span>
+                </button>
+                <button id="resetBtn" class="flex items-center gap-2 px-3 py-1.5 bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-200 dark:hover:bg-rose-500/20 rounded-md transition-colors text-sm font-medium border border-rose-200 dark:border-rose-500/20 flex-shrink-0">
+                    <i data-lucide="refresh-ccw" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Reset</span>
+                </button>
+                <button id="exportBtn" class="flex items-center gap-2 px-3 py-1.5 bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-500/20 rounded-md transition-colors text-sm font-medium border border-indigo-200 dark:border-indigo-500/20 flex-shrink-0">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Export</span>
+                </button>
+                <button id="importBtn" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-500/20 rounded-md transition-colors text-sm font-medium border border-emerald-200 dark:border-emerald-500/20 flex-shrink-0">
+                    <i data-lucide="upload" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Import</span>
+                </button>
+                <input type="file" id="fileInput" accept=".json" class="hidden" />
+            </div>
+        </div>
+    </nav>
+
+    <!-- Settings Dropdown Panel -->
+    <div id="settingsPanel" class="hidden border-b border-slate-200 dark:border-zinc-800/60 bg-slate-100 dark:bg-zinc-900/50 p-6 transform transition-all duration-200 origin-top">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="space-y-2">
+                <label class="text-xs font-semibold text-slate-500 dark:text-zinc-500 uppercase tracking-wider">Starting Debt ($ Trillions)</label>
+                <input type="number" id="cfgStartingDebt" class="w-full bg-white dark:bg-darkbg border border-slate-300 dark:border-zinc-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 rounded-lg p-2.5 text-slate-900 dark:text-white font-mono outline-none"/>
+            </div>
+            <div class="space-y-2">
+                <label class="text-xs font-semibold text-slate-500 dark:text-zinc-500 uppercase tracking-wider">Annual Deficit ($ Trillions)</label>
+                <input type="number" id="cfgAnnualDeficit" class="w-full bg-white dark:bg-darkbg border border-slate-300 dark:border-zinc-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 rounded-lg p-2.5 text-slate-900 dark:text-white font-mono outline-none"/>
+            </div>
+            <div class="space-y-2">
+                <label class="text-xs font-semibold text-slate-500 dark:text-zinc-500 uppercase tracking-wider">Projection Window (Years)</label>
+                <input type="number" id="cfgYears" class="w-full bg-white dark:bg-darkbg border border-slate-300 dark:border-zinc-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 rounded-lg p-2.5 text-slate-900 dark:text-white font-mono outline-none"/>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- Dashboard Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Key Metrics Cards -->
+            <div class="lg:col-span-5 grid grid-cols-2 gap-4">
+                
+                <!-- Deficit Status -->
+                <div id="deficitCard" class="col-span-2 sm:col-span-1 p-5 rounded-2xl border bg-white dark:bg-zinc-900/40 border-slate-200 dark:border-zinc-800 transition-colors duration-300 flex flex-col justify-between shadow-sm dark:shadow-none">
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs font-semibold text-slate-500 dark:text-zinc-500 uppercase tracking-wider">New Deficit</span>
+                            <span id="deficitBadge" class="flex items-center gap-1 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-400/10 px-2 py-1 rounded-full">
+                                <i data-lucide="shield-alert" class="w-3 h-3"></i> Deficit
+                            </span>
+                        </div>
+                        <div class="flex items-baseline gap-1 mt-2">
+                            <span id="newDeficitValue" class="text-3xl font-light tracking-tighter text-slate-900 dark:text-white transition-colors duration-300">
+                                $0.00
+                            </span>
+                            <span class="text-sm text-slate-500 dark:text-zinc-500 font-medium">T/yr</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/50 flex justify-between text-[11px] font-medium uppercase tracking-wider">
+                        <span class="text-slate-400 dark:text-zinc-500">Original Baseline</span>
+                        <span id="originalDeficitValue" class="text-slate-500 dark:text-zinc-400">$1.90T</span>
+                    </div>
+                </div>
+
+                <!-- Debt Free Timer -->
+                <div class="col-span-2 sm:col-span-1 p-5 rounded-2xl bg-white dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 flex flex-col justify-between shadow-sm dark:shadow-none transition-colors duration-300">
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs font-semibold text-slate-500 dark:text-zinc-500 uppercase tracking-wider">Debt-Free In</span>
+                            <i data-lucide="calendar" class="w-4 h-4 text-slate-400 dark:text-zinc-500"></i>
+                        </div>
+                        <div class="flex items-baseline gap-2 mt-2">
+                            <span id="yearsToDebtFree" class="text-3xl font-light tracking-tighter text-slate-900 dark:text-white">
+                                Never
+                            </span>
+                        </div>
+                        <p id="debtFreeSub" class="text-[11px] text-slate-500 dark:text-zinc-500 mt-1 leading-tight">Requires a budget surplus to pay down principal.</p>
+                    </div>
+                </div>
+
+                <!-- Total Impact & Composition -->
+                <div class="col-span-2 p-5 rounded-2xl bg-white dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center gap-6 shadow-sm dark:shadow-none relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl -mr-10 -mt-10 transition-transform group-hover:scale-150"></div>
+                    
+                    <div class="flex-1 relative z-10 w-full">
+                        <span id="yearsLabel" class="text-xs font-semibold text-slate-500 dark:text-zinc-500 uppercase tracking-wider mb-1 block">10-Year Total Saved</span>
+                        <div class="flex items-baseline gap-2">
+                            <span id="totalSavedValue" class="text-4xl sm:text-5xl font-light tracking-tighter text-cyan-600 dark:text-cyan-400">
+                                $0.0
+                            </span>
+                            <span class="text-slate-500 dark:text-zinc-500 font-medium">Trillion</span>
+                        </div>
+                        <p class="text-[11px] sm:text-xs text-slate-500 dark:text-zinc-500 mt-2 flex items-center gap-1.5">
+                            <i data-lucide="trending-down" class="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-500"></i>
+                            via policies & prevented interest
+                        </p>
+                    </div>
+
+                    <!-- Donut Chart -->
+                    <div class="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 z-10">
+                        <svg viewBox="0 0 100 100" class="w-full h-full transform -rotate-90">
+                            <!-- Background ring -->
+                            <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" stroke-width="12" class="text-slate-100 dark:text-zinc-800/50" />
+                            <!-- Segments -->
+                            <circle id="donutGrowth" cx="50" cy="50" r="40" fill="transparent" stroke="#3b82f6" stroke-width="12" stroke-dasharray="0 251.2" class="donut-segment" />
+                            <circle id="donutRevenue" cx="50" cy="50" r="40" fill="transparent" stroke="#10b981" stroke-width="12" stroke-dasharray="0 251.2" class="donut-segment" />
+                            <circle id="donutSpending" cx="50" cy="50" r="40" fill="transparent" stroke="#f43f5e" stroke-width="12" stroke-dasharray="0 251.2" class="donut-segment" />
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center flex-col">
+                            <span class="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">Mix</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Chart Area -->
+            <div class="lg:col-span-7 p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 flex flex-col shadow-sm dark:shadow-none">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-medium text-slate-900 dark:text-white">Debt Trajectory</h2>
+                        <p id="chartSubLabel" class="text-sm text-slate-500 dark:text-zinc-500">Projected over 10 years</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-0.5 bg-rose-500 rounded-full"></div>
+                            <span id="chartBaseLegend" class="text-slate-600 dark:text-zinc-400">Baseline ($0.0T)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-0.5 bg-cyan-500 dark:bg-cyan-400 rounded-full"></div>
+                            <span id="chartPropLegend" class="text-slate-800 dark:text-zinc-200 font-medium">Proposed ($0.0T)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="chartContainer" class="flex-1 relative min-h-[220px] w-full mt-2">
+                    <!-- SVG injected via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Presets & Target Mode Bar -->
+        <div class="pt-6 border-t border-slate-200 dark:border-zinc-800/60 flex flex-col xl:flex-row xl:items-start justify-between gap-6">
+            
+            <!-- Target Auto-Solver -->
+            <div class="flex flex-col sm:flex-row sm:items-center gap-4 bg-white dark:bg-zinc-900/40 p-3 px-4 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm dark:shadow-none">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="target" class="w-5 h-5 text-cyan-600 dark:text-cyan-500"></i>
+                    <span class="text-sm font-bold text-slate-800 dark:text-zinc-200">Auto-Solver Mode:</span>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="targetModeToggle" class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500 relative"></div>
+                        <span class="text-sm font-medium text-slate-600 dark:text-zinc-400" id="targetModeLabel">Disabled</span>
+                    </label>
+
+                    <div class="flex items-center gap-2 opacity-50 transition-opacity" id="targetInputWrapper">
+                        <span class="text-sm text-slate-500 dark:text-zinc-500">Target:</span>
+                        <input type="number" id="targetYearsInput" value="30" min="5" max="100" class="w-16 bg-slate-100 dark:bg-darkbg border border-slate-300 dark:border-zinc-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 rounded p-1 text-center text-sm font-mono text-slate-900 dark:text-white outline-none" disabled>
+                        <span class="text-sm text-slate-500 dark:text-zinc-500">Years</span>
+                    </div>
+
+                    <div id="targetStatus" class="hidden text-xs font-bold px-2 py-1 rounded bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30">
+                        Goal Unreachable (Check Limits)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Presets -->
+            <div class="flex flex-col sm:flex-row sm:items-start gap-3 flex-1">
+                <h3 class="text-sm font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-2 whitespace-nowrap mt-2">
+                    <i data-lucide="zap" class="w-4 h-4 text-amber-500"></i> Presets:
+                </h3>
+                <div class="flex flex-wrap gap-2" id="presetButtons">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- Policy Levers Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4 border-t border-slate-200 dark:border-zinc-800/60">
+            
+            <!-- Column 1: Spending -->
+            <div class="space-y-4">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-rose-500"></div>
+                        <h3 class="text-lg font-medium text-slate-900 dark:text-white">Decrease Spending</h3>
+                    </div>
+                    <div id="spendingSubtotal" class="text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-400/10 px-2 py-1 rounded">+$0B/yr</div>
+                </div>
+                <div id="spendingContainer" class="bg-white dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-2 divide-y divide-slate-100 dark:divide-zinc-800/50 shadow-sm dark:shadow-none">
+                    <!-- Generated via JS -->
+                </div>
+            </div>
+
+            <!-- Column 2: Revenue -->
+            <div class="space-y-4">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                        <h3 class="text-lg font-medium text-slate-900 dark:text-white">Increase Revenue</h3>
+                    </div>
+                    <div id="revenueSubtotal" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-400/10 px-2 py-1 rounded">+$0B/yr</div>
+                </div>
+                <div id="revenueContainer" class="bg-white dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-2 divide-y divide-slate-100 dark:divide-zinc-800/50 shadow-sm dark:shadow-none">
+                    <!-- Generated via JS -->
+                </div>
+            </div>
+
+            <!-- Column 3: Growth -->
+            <div class="space-y-4">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                        <h3 class="text-lg font-medium text-slate-900 dark:text-white">Economic Growth</h3>
+                    </div>
+                    <div id="growthSubtotal" class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-400/10 px-2 py-1 rounded">+$0B/yr</div>
+                </div>
+                <div id="growthContainer" class="bg-white dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-2 divide-y divide-slate-100 dark:divide-zinc-800/50 shadow-sm dark:shadow-none">
+                    <!-- Generated via JS -->
+                </div>
+                
+                <!-- Info Box -->
+                <div class="mt-6 p-5 rounded-xl bg-slate-100 dark:bg-zinc-900/30 border border-slate-200 dark:border-zinc-800/80">
+                    <h4 class="text-sm font-semibold text-slate-700 dark:text-zinc-300 flex items-center gap-2 mb-2">
+                        <i data-lucide="info" class="w-4 h-4 text-slate-500 dark:text-zinc-500"></i> Limits & Locks
+                    </h4>
+                    <p class="text-xs text-slate-600 dark:text-zinc-500 leading-relaxed">
+                        When Auto-Solver is enabled, it automatically distributes the burden across all sliders to hit your target. 
+                        Click the <strong>Lock</strong> icon to prevent the solver from touching a specific policy, or edit the <strong>Min/Max limits</strong> directly under each slider to restrict how far the solver can push it.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // State
+        const state = {
+            config: { startingDebt: 39.0, annualDeficit: 1.9, years: 10 },
+            showSettings: false,
+            isDark: true,
+            targetMode: false,
+            targetYears: 30,
+            lockedPolicies: {}, 
+            customBounds: {} 
+        };
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            const toastIcon = document.getElementById('toastIcon');
+            
+            toastMsg.innerText = msg;
+            toastIcon.setAttribute('data-lucide', isError ? 'alert-circle' : 'check-circle');
+            lucide.createIcons();
+            
+            if(isError) {
+                toast.classList.add('bg-rose-600', 'dark:bg-rose-500', 'text-white', 'border-rose-500');
+                toast.classList.remove('bg-slate-800', 'dark:bg-white', 'dark:text-slate-900');
+            } else {
+                toast.classList.remove('bg-rose-600', 'dark:bg-rose-500', 'text-white', 'border-rose-500');
+                toast.classList.add('bg-slate-800', 'dark:bg-white', 'dark:text-slate-900', 'text-white');
+            }
+            
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+
+        // Theme Setup
+        function initTheme() {
+            if (localStorage.getItem('theme') === 'light') {
+                state.isDark = false;
+                document.documentElement.classList.remove('dark');
+            }
+            document.getElementById('themeToggleBtn').addEventListener('click', () => {
+                state.isDark = !state.isDark;
+                if (state.isDark) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                }
+                updateCalculations(); 
+            });
+        }
+
+        // Expanded Policy Definitions
+        const policyDefs = [
+            // Spending
+            { id: 'defenseCutPct', category: 'spending', label: 'Defense Budget Cut', base: 0, min: 0, max: 100, step: 1, unit: '%', conversion: 8.5, desc: 'Cut $850B military budget.' },
+            { id: 'ssCutPct', category: 'spending', label: 'Social Security Cut', base: 0, min: 0, max: 100, step: 1, unit: '%', conversion: 14.0, desc: 'Reduce $1.4T payout via age/means-testing.' },
+            { id: 'medicareCutPct', category: 'spending', label: 'Medicare/Health Cut', base: 0, min: 0, max: 100, step: 1, unit: '%', conversion: 8.5, desc: 'Cut $850B budget via negotiations/caps.' },
+            { id: 'discretionaryCutPct', category: 'spending', label: 'Discretionary Cut', base: 0, min: 0, max: 100, step: 1, unit: '%', conversion: 9.0, desc: 'Cut $900B non-defense discretionary.' },
+            { id: 'fedWorkforce', category: 'spending', label: 'Federal Workforce Cut', base: 0, min: 0, max: 100, step: 1, unit: '%', conversion: 2.5, desc: 'Reduce civilian agency employees.' },
+            { id: 'farmSubsidies', category: 'spending', label: 'Cut Farm Subsidies', base: 0, min: 0, max: 100, step: 5, unit: '%', conversion: 0.3, desc: 'Reduce federal agricultural subsidies.' },
+            
+            // Revenue
+            { id: 'corpTaxRate', category: 'revenue', label: 'Corporate Tax Rate', base: 21, min: 21, max: 50, step: 1, unit: '%', conversion: 13, desc: 'Current: 21%. Raise federal rate.' },
+            { id: 'incomeTaxRate', category: 'revenue', label: 'Top Income Tax Rate', base: 37, min: 37, max: 70, step: 1, unit: '%', conversion: 12, desc: 'Current: 37%. Raise top marginal rate.' },
+            { id: 'wealthTax', category: 'revenue', label: 'Wealth Tax (> $50M)', base: 0, min: 0, max: 5, step: 0.1, unit: '%', conversion: 30, desc: 'Annual tax on extreme net worth.' },
+            { id: 'capGainsTax', category: 'revenue', label: 'Capital Gains Tax', base: 20, min: 20, max: 60, step: 1, unit: '%', conversion: 3, desc: 'Raise top rate on long-term cap gains.' },
+            { id: 'ssPayrollCap', category: 'revenue', label: 'Lift SS Payroll Cap', base: 0, min: 0, max: 100, step: 10, unit: '%', conversion: 12, desc: 'Subject earnings >$168k to SS tax.' },
+            { id: 'vatRate', category: 'revenue', label: 'Value-Added Tax', base: 0, min: 0, max: 25, step: 0.5, unit: '%', conversion: 30, desc: 'National consumption tax.' },
+            { id: 'finTransactionTax', category: 'revenue', label: 'Fin. Transaction Tax', base: 0, min: 0, max: 1, step: 0.1, unit: '%', conversion: 70, desc: 'Tax on trades of stocks & bonds.' },
+            { id: 'carbonTaxPerTon', category: 'revenue', label: 'Carbon Tax', base: 0, min: 0, max: 200, step: 5, unit: '$/ton', conversion: 4, desc: 'Tax per ton of emissions.' },
+            { id: 'gasTaxRate', category: 'revenue', label: 'Gas Tax (Excl. Diesel)', base: 18.4, min: 18.4, max: 300, step: 1, unit: '¢/gal', conversion: 1.1, desc: 'Raise gas tax, exempting commercial diesel.' },
+            { id: 'tariffs', category: 'revenue', label: 'Additional Tariffs', base: 0, min: 0, max: 100, step: 1, unit: '%', conversion: 25, desc: 'Across-the-board tax on imported goods.' },
+            { id: 'deductionsPct', category: 'revenue', label: 'End Deductions', base: 0, min: 0, max: 20, step: 1, unit: '%', conversion: 15, desc: 'Eliminate % of existing tax loopholes.' },
+            
+            // Growth
+            { id: 'gdpGrowthBoost', category: 'growth', label: 'General GDP Boost', base: 0, min: 0, max: 3.0, step: 0.1, unit: '%', conversion: 300, desc: 'Add % to annual GDP via general policy.' },
+            { id: 'immigration', category: 'growth', label: 'High-Skilled Visas', base: 0, min: 0, max: 2000, step: 50, unit: 'k', conversion: 0.15, desc: 'Add thousands of skilled visas/yr.' },
+            { id: 'deregulation', category: 'growth', label: 'Reduce Regulations', base: 0, min: 0, max: 50, step: 1, unit: '%', conversion: 5, desc: 'Cut compliance costs to boost GDP.' }
+        ];
+
+        // Preset Plans (Including 18 new Geographies)
+        const presetPlans = [
+            // General
+            { name: "Progressive", data: { corpTaxRate: 35, incomeTaxRate: 60, wealthTax: 3, capGainsTax: 40, ssPayrollCap: 100, defenseCutPct: 30, carbonTaxPerTon: 50 } },
+            { name: "Conservative", data: { discretionaryCutPct: 40, medicareCutPct: 20, ssCutPct: 20, fedWorkforce: 30, deregulation: 40, farmSubsidies: 50 } },
+            { name: "Centrist", data: { defenseCutPct: 10, discretionaryCutPct: 10, medicareCutPct: 5, ssCutPct: 5, corpTaxRate: 25, incomeTaxRate: 42, capGainsTax: 25, immigration: 500 } },
+            { name: "Tax the Rich", data: { wealthTax: 5, incomeTaxRate: 70, capGainsTax: 50, ssPayrollCap: 100, finTransactionTax: 0.5, corpTaxRate: 40 } },
+            { name: "Eco & Growth", data: { carbonTaxPerTon: 150, gasTaxRate: 150, immigration: 1500, gdpGrowthBoost: 0.5, deregulation: 20 } },
+            { name: "Austerity", data: { defenseCutPct: 50, ssCutPct: 30, medicareCutPct: 30, discretionaryCutPct: 60, fedWorkforce: 50, farmSubsidies: 100 } },
+            { name: "Libertarian", data: { defenseCutPct: 40, ssCutPct: 50, medicareCutPct: 50, discretionaryCutPct: 80, fedWorkforce: 50, farmSubsidies: 100, deregulation: 50 } },
+            { name: "Bipartisan Deal", data: { defenseCutPct: 10, ssCutPct: 10, medicareCutPct: 10, discretionaryCutPct: 10, corpTaxRate: 25, incomeTaxRate: 40, capGainsTax: 28, ssPayrollCap: 30, vatRate: 2, carbonTaxPerTon: 25 } },
+            { name: "America First", data: { tariffs: 100, deregulation: 40, discretionaryCutPct: 30, fedWorkforce: 30, farmSubsidies: 0, defenseCutPct: 0 } },
+            { name: "Growth Maxxing", data: { gdpGrowthBoost: 2.0, immigration: 2000, deregulation: 50, discretionaryCutPct: 20, fedWorkforce: 20 } },
+            
+            // International
+            { name: "Nordic Model", data: { vatRate: 20, carbonTaxPerTon: 100, incomeTaxRate: 55, corpTaxRate: 28, gasTaxRate: 150, deductionsPct: 20, wealthTax: 2, capGainsTax: 45, defenseCutPct: 15 } },
+            { name: "Canada", data: { corpTaxRate: 26, incomeTaxRate: 53, vatRate: 5, carbonTaxPerTon: 60, gasTaxRate: 50, defenseCutPct: 30, medicareCutPct: 20 } },
+            { name: "Mexico", data: { corpTaxRate: 30, incomeTaxRate: 35, vatRate: 16, defenseCutPct: 50, discretionaryCutPct: 30, fedWorkforce: 20 } },
+            { name: "Britain", data: { corpTaxRate: 25, incomeTaxRate: 45, vatRate: 20, gasTaxRate: 150, defenseCutPct: 20 } },
+            { name: "Scotland", data: { corpTaxRate: 25, incomeTaxRate: 47, vatRate: 20, gasTaxRate: 150, defenseCutPct: 25 } },
+            { name: "Argentina (Austerity)", data: { discretionaryCutPct: 80, fedWorkforce: 70, farmSubsidies: 100, deregulation: 50, defenseCutPct: 40 } },
+            { name: "Japan", data: { corpTaxRate: 30, incomeTaxRate: 55, vatRate: 10, defenseCutPct: 40 } },
+            { name: "Netherlands", data: { corpTaxRate: 25, incomeTaxRate: 49, vatRate: 21, carbonTaxPerTon: 80, gasTaxRate: 200, defenseCutPct: 20 } },
+            { name: "Germany", data: { corpTaxRate: 30, incomeTaxRate: 45, vatRate: 19, carbonTaxPerTon: 40, gasTaxRate: 150, defenseCutPct: 15 } },
+            { name: "New Zealand", data: { corpTaxRate: 28, incomeTaxRate: 39, capGainsTax: 0, vatRate: 15, defenseCutPct: 40 } },
+            { name: "Australia", data: { corpTaxRate: 30, incomeTaxRate: 45, vatRate: 10, immigration: 1500, defenseCutPct: 10 } },
+            
+            // US States & Territories
+            { name: "California", data: { incomeTaxRate: 50, capGainsTax: 33, carbonTaxPerTon: 40, gasTaxRate: 60, immigration: 1000 } },
+            { name: "Illinois", data: { corpTaxRate: 28, incomeTaxRate: 42, gasTaxRate: 50, deductionsPct: 10 } },
+            { name: "Iowa", data: { farmSubsidies: 0, corpTaxRate: 21, incomeTaxRate: 37, deregulation: 20 } },
+            { name: "Idaho", data: { corpTaxRate: 21, incomeTaxRate: 35, deregulation: 40, discretionaryCutPct: 30, fedWorkforce: 20 } },
+            { name: "Texas", data: { corpTaxRate: 21, incomeTaxRate: 30, capGainsTax: 15, deregulation: 50, immigration: 1000, discretionaryCutPct: 20 } },
+            { name: "Maryland", data: { fedWorkforce: 0, incomeTaxRate: 45, corpTaxRate: 28, carbonTaxPerTon: 20 } },
+            { name: "New York", data: { incomeTaxRate: 50, corpTaxRate: 28, finTransactionTax: 0.5, capGainsTax: 35, gasTaxRate: 50 } },
+            { name: "Puerto Rico", data: { corpTaxRate: 15, capGainsTax: 0, incomeTaxRate: 33, vatRate: 11.5, fedWorkforce: 20 } }
+        ];
+
+        const policies = {};
+        
+        // Init policies and custom bounds
+        policyDefs.forEach(p => {
+            policies[p.id] = p.base;
+            state.customBounds[p.id] = { min: p.min, max: p.max };
+        });
+
+        // DOM Elements
+        const DOM = {
+            settingsPanel: document.getElementById('settingsPanel'),
+            cfgStartingDebt: document.getElementById('cfgStartingDebt'),
+            cfgAnnualDeficit: document.getElementById('cfgAnnualDeficit'),
+            cfgYears: document.getElementById('cfgYears'),
+            
+            deficitCard: document.getElementById('deficitCard'),
+            deficitBadge: document.getElementById('deficitBadge'),
+            newDeficitValue: document.getElementById('newDeficitValue'),
+            originalDeficitValue: document.getElementById('originalDeficitValue'),
+            
+            yearsToDebtFree: document.getElementById('yearsToDebtFree'),
+            debtFreeSub: document.getElementById('debtFreeSub'),
+            
+            yearsLabel: document.getElementById('yearsLabel'),
+            totalSavedValue: document.getElementById('totalSavedValue'),
+            chartSubLabel: document.getElementById('chartSubLabel'),
+            chartBaseLegend: document.getElementById('chartBaseLegend'),
+            chartPropLegend: document.getElementById('chartPropLegend'),
+            chartContainer: document.getElementById('chartContainer'),
+
+            subtotals: {
+                spending: document.getElementById('spendingSubtotal'),
+                revenue: document.getElementById('revenueSubtotal'),
+                growth: document.getElementById('growthSubtotal'),
+            },
+
+            donuts: {
+                spending: document.getElementById('donutSpending'),
+                revenue: document.getElementById('donutRevenue'),
+                growth: document.getElementById('donutGrowth')
+            },
+
+            containers: {
+                spending: document.getElementById('spendingContainer'),
+                revenue: document.getElementById('revenueContainer'),
+                growth: document.getElementById('growthContainer')
+            },
+            presetButtons: document.getElementById('presetButtons'),
+
+            // Target Mode UI
+            targetModeToggle: document.getElementById('targetModeToggle'),
+            targetModeLabel: document.getElementById('targetModeLabel'),
+            targetInputWrapper: document.getElementById('targetInputWrapper'),
+            targetYearsInput: document.getElementById('targetYearsInput'),
+            targetStatus: document.getElementById('targetStatus'),
+            
+            exportBtn: document.getElementById('exportBtn'),
+            importBtn: document.getElementById('importBtn'),
+            fileInput: document.getElementById('fileInput')
+        };
+
+        // --- Auto-Solver Logic ---
+
+        function calculateTargetSavingsBillion() {
+            // How much total savings (in Billions) is needed to pay off debt in X years?
+            const requiredSurplusTrillion = state.config.startingDebt / state.targetYears;
+            const targetAnnualDeficitTrillion = -requiredSurplusTrillion;
+            const neededTrillion = state.config.annualDeficit - targetAnnualDeficitTrillion;
+            return neededTrillion * 1000;
+        }
+
+        function distributeSavings(targetBillion, ignorePolicyId = null) {
+            let fixedBillion = 0;
+            let adjustables = [];
+            let neededBillion = targetBillion;
+
+            // 1. Separate fixed policies
+            policyDefs.forEach(def => {
+                const bounds = state.customBounds[def.id];
+                if (state.lockedPolicies[def.id] || def.id === ignorePolicyId) {
+                    fixedBillion += (policies[def.id] - def.base) * def.conversion;
+                } else {
+                    adjustables.push(def);
+                    // Start from user's custom minimum limit instead of def.base
+                    policies[def.id] = bounds.min; 
+                }
+            });
+
+            // Account for savings automatically gained just by starting at bounds.min
+            let baselineSavingsFromMins = 0;
+            adjustables.forEach(def => {
+                const bounds = state.customBounds[def.id];
+                baselineSavingsFromMins += (bounds.min - def.base) * def.conversion;
+            });
+
+            neededBillion -= fixedBillion;
+            neededBillion -= baselineSavingsFromMins;
+
+            // 2. Distribute the remaining needed savings among unlocked policies
+            if (neededBillion > 0) {
+                let iterations = 0;
+                while (neededBillion > 0.1 && adjustables.length > 0 && iterations < 50) {
+                    iterations++;
+                    
+                    let totalCapacity = 0;
+                    adjustables.forEach(def => {
+                        const bounds = state.customBounds[def.id];
+                        totalCapacity += (bounds.max - policies[def.id]) * def.conversion;
+                    });
+
+                    if (totalCapacity < 0.1) break; // Reached limits
+
+                    if (neededBillion >= totalCapacity) {
+                        // Max everything out
+                        adjustables.forEach(def => policies[def.id] = state.customBounds[def.id].max);
+                        neededBillion -= totalCapacity;
+                        break;
+                    }
+
+                    let nextAdjustables = [];
+                    let distributedThisRound = 0;
+
+                    // Distribute proportionally
+                    adjustables.forEach(def => {
+                        const bounds = state.customBounds[def.id];
+                        let capacity = (bounds.max - policies[def.id]) * def.conversion;
+                        if (capacity <= 0) return;
+
+                        let share = neededBillion * (capacity / totalCapacity);
+                        let valIncrease = share / def.conversion;
+                        
+                        if (policies[def.id] + valIncrease >= bounds.max) {
+                            distributedThisRound += (bounds.max - policies[def.id]) * def.conversion;
+                            policies[def.id] = bounds.max;
+                        } else {
+                            policies[def.id] += valIncrease;
+                            distributedThisRound += share;
+                            nextAdjustables.push(def);
+                        }
+                    });
+
+                    neededBillion -= distributedThisRound;
+                    adjustables = nextAdjustables;
+                }
+            }
+
+            // Show error if goal is mathematically impossible even with bounds
+            if (neededBillion > 5) { 
+                DOM.targetStatus.classList.remove('hidden');
+            } else {
+                DOM.targetStatus.classList.add('hidden');
+            }
+        }
+
+        function enforceTarget(ignoreId = null) {
+            if (!state.targetMode) return;
+            const targetBillion = calculateTargetSavingsBillion();
+            distributeSavings(targetBillion, ignoreId);
+        }
+
+        // Functions for Bounds and Locks
+        window.toggleLock = function(policyId) {
+            state.lockedPolicies[policyId] = !state.lockedPolicies[policyId];
+            
+            const iconEl = document.querySelector(`#lock-${policyId} i`);
+            if (state.lockedPolicies[policyId]) {
+                iconEl.setAttribute('data-lucide', 'lock');
+                iconEl.classList.add('text-amber-500');
+            } else {
+                iconEl.setAttribute('data-lucide', 'unlock');
+                iconEl.classList.remove('text-amber-500');
+            }
+            lucide.createIcons();
+            
+            if (state.targetMode) {
+                enforceTarget();
+                updateAllSliderUI();
+                updateCalculations();
+            }
+        };
+
+        window.updateBound = function(id, type, value) {
+            const def = policyDefs.find(p => p.id === id);
+            let val = parseFloat(value);
+            if (isNaN(val)) val = type === 'min' ? def.min : def.max;
+
+            // Only constrain so min <= max (allow user to set whatever extreme limits they want)
+            if (type === 'min') {
+                if (val > state.customBounds[id].max) val = state.customBounds[id].max;
+                state.customBounds[id].min = val;
+                if (policies[id] < val) policies[id] = val; // push policy up
+            } else {
+                if (val < state.customBounds[id].min) val = state.customBounds[id].min;
+                state.customBounds[id].max = val;
+                if (policies[id] > val) policies[id] = val; // push policy down
+            }
+
+            // Update DOM Bounds visually
+            document.getElementById(`bmin-${id}`).value = state.customBounds[id].min;
+            document.getElementById(`bmax-${id}`).value = state.customBounds[id].max;
+            
+            if (state.targetMode) {
+                enforceTarget();
+                updateAllSliderUI();
+            } else {
+                updateSingleSliderUI(id);
+            }
+            updateCalculations();
+        };
+
+        // --- UI Rendering ---
+
+        function renderPresets() {
+            DOM.presetButtons.innerHTML = '';
+            presetPlans.forEach(plan => {
+                const btn = document.createElement('button');
+                btn.className = "px-2.5 py-1.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 hover:border-cyan-400 dark:hover:border-cyan-500 rounded-lg text-xs font-medium text-slate-700 dark:text-zinc-300 transition-all hover:shadow-sm";
+                btn.innerText = plan.name;
+                btn.onclick = () => {
+                    // Turn off target mode & reset bounds to avoid mathematical snags with preset plans
+                    if(state.targetMode) DOM.targetModeToggle.click();
+                    
+                    policyDefs.forEach(p => {
+                        policies[p.id] = p.base;
+                        state.customBounds[p.id] = { min: p.min, max: p.max };
+                    });
+                    
+                    Object.keys(plan.data).forEach(k => policies[k] = plan.data[k]);
+                    
+                    renderSliders(); // Re-render entirely to fix bounds UI
+                    lucide.createIcons();
+                    updateCalculations();
+                    showToast(`Applied ${plan.name} Preset`);
+                };
+                DOM.presetButtons.appendChild(btn);
+            });
+        }
+
+        function updateSingleSliderUI(id) {
+            const def = policyDefs.find(p => p.id === id);
+            const val = policies[id];
+            const bounds = state.customBounds[id];
+            
+            const range = bounds.max - bounds.min;
+            const percentage = range === 0 ? 0 : ((val - bounds.min) / range) * 100;
+            const dollarsGenerated = (val - def.base) * def.conversion;
+            
+            const slider = document.getElementById(`input-${id}`);
+            if(slider) {
+                slider.min = bounds.min;
+                slider.max = bounds.max;
+                slider.value = val;
+            }
+            
+            const track = document.getElementById(`track-${id}`);
+            if(track) track.style.width = `${percentage}%`;
+            
+            const valLabel = document.getElementById(`val-${id}`);
+            if(valLabel) valLabel.innerText = `${val.toFixed(def.step < 1 ? 1 : 0)}${def.unit}`;
+            
+            const genLabel = document.getElementById(`gen-${id}`);
+            if(genLabel) genLabel.innerText = `+$${Math.abs(dollarsGenerated).toFixed(1)}B`;
+        }
+
+        function updateAllSliderUI() {
+            policyDefs.forEach(def => updateSingleSliderUI(def.id));
+        }
+
+        function renderSliders() {
+            Object.values(DOM.containers).forEach(c => c.innerHTML = '');
+
+            policyDefs.forEach(def => {
+                const val = policies[def.id];
+                const bounds = state.customBounds[def.id];
+                const range = bounds.max - bounds.min;
+                const percentage = range === 0 ? 0 : ((val - bounds.min) / range) * 100;
+                const dollarsGenerated = (val - def.base) * def.conversion;
+                const isLocked = state.lockedPolicies[def.id];
+
+                const html = `
+                <div class="p-4 group transition-colors hover:bg-slate-50 dark:hover:bg-zinc-800/30 rounded-xl relative">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-2">
+                            <button onclick="window.toggleLock('${def.id}')" id="lock-${def.id}" class="p-1 -ml-1 rounded hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors text-slate-400 dark:text-zinc-500 outline-none" title="Lock/Unlock Slider">
+                                <i data-lucide="${isLocked ? 'lock' : 'unlock'}" class="w-3.5 h-3.5 ${isLocked ? 'text-amber-500' : ''}"></i>
+                            </button>
+                            <label class="font-medium text-slate-700 dark:text-zinc-200 text-sm group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">${def.label}</label>
+                        </div>
+                        <div class="font-mono text-[13px] text-cyan-700 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-200 dark:border-cyan-400/20 flex gap-2">
+                            <span class="text-slate-600 dark:text-zinc-300" id="val-${def.id}">${val.toFixed(def.step < 1 ? 1 : 0)}${def.unit}</span>
+                            <span class="opacity-30 dark:opacity-50">|</span>
+                            <span id="gen-${def.id}">+$${Math.abs(dollarsGenerated).toFixed(1)}B</span>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-500 dark:text-zinc-500 mb-3 pr-4 leading-tight ml-6">${def.desc}</p>
+                    
+                    <div class="relative w-full h-2 rounded-full bg-slate-200 dark:bg-zinc-800">
+                        <div id="track-${def.id}" class="absolute top-0 left-0 h-full bg-gradient-to-r from-cyan-500 to-cyan-400 dark:from-cyan-600 dark:to-cyan-400 rounded-full transition-all duration-200" style="width: ${percentage}%"></div>
+                        <input type="range" id="input-${def.id}" min="${bounds.min}" max="${bounds.max}" step="${def.step}" value="${val}" 
+                            class="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" />
+                    </div>
+                    
+                    <div class="flex justify-between items-center text-[10px] text-slate-400 dark:text-zinc-500 mt-2 font-medium uppercase tracking-wider">
+                        <div class="flex items-center gap-1 hover:text-slate-700 dark:hover:text-zinc-300 transition-colors">
+                            <label for="bmin-${def.id}">Min:</label>
+                            <input type="number" id="bmin-${def.id}" value="${bounds.min}" step="${def.step}"
+                                class="w-12 bg-transparent text-slate-600 dark:text-zinc-400 font-mono text-center outline-none focus:border-b border-cyan-500 border-dashed" 
+                                onchange="window.updateBound('${def.id}', 'min', this.value)" />
+                        </div>
+                        <div class="flex items-center gap-1 hover:text-slate-700 dark:hover:text-zinc-300 transition-colors">
+                            <label for="bmax-${def.id}">Max:</label>
+                            <input type="number" id="bmax-${def.id}" value="${bounds.max}" step="${def.step}"
+                                class="w-12 bg-transparent text-slate-600 dark:text-zinc-400 font-mono text-center outline-none focus:border-b border-cyan-500 border-dashed" 
+                                onchange="window.updateBound('${def.id}', 'max', this.value)" />
+                        </div>
+                    </div>
+                </div>
+                `;
+                
+                DOM.containers[def.category].insertAdjacentHTML('beforeend', html);
+            });
+
+            // Attach input listeners for manual slider dragging
+            policyDefs.forEach(def => {
+                const input = document.getElementById(`input-${def.id}`);
+                input.addEventListener('input', (e) => {
+                    const newVal = parseFloat(e.target.value);
+                    policies[def.id] = newVal;
+                    
+                    if (state.targetMode) {
+                        enforceTarget(def.id); 
+                        updateAllSliderUI();   
+                    } else {
+                        updateSingleSliderUI(def.id); 
+                    }
+                    updateCalculations();
+                });
+            });
+        }
+
+        function renderChart(chartData, minDebt, maxDebt) {
+            if (!chartData || chartData.length === 0) return;
+
+            const width = 1000;
+            const height = 280;
+            const padding = 25;
+
+            const yMin = Math.max(0, minDebt - (maxDebt - minDebt) * 0.1); 
+            const yMax = maxDebt + (maxDebt - minDebt) * 0.1;
+
+            const getX = (index) => padding + (index / (chartData.length - 1)) * (width - padding * 2);
+            const getY = (val) => height - padding - ((val - yMin) / (yMax - yMin)) * (height - padding * 2);
+
+            const doNothingPoints = chartData.map((d, i) => `${getX(i)},${getY(d.doNothing)}`).join(' ');
+            const proposedPoints = chartData.map((d, i) => `${getX(i)},${getY(d.proposed)}`).join(' ');
+
+            const gridColor = state.isDark ? "#27272a" : "#e2e8f0";
+            const textColor = state.isDark ? "#71717a" : "#64748b";
+            const baseColor = state.isDark ? "#f43f5e" : "#e11d48"; // Rose
+            const propColor = state.isDark ? "#22d3ee" : "#06b6d4"; // Cyan
+            const propShadowColor = state.isDark ? "rgba(34, 211, 238, 0.4)" : "rgba(6, 182, 212, 0.3)";
+            const markerFill = state.isDark ? "#0a0a0c" : "#ffffff";
+
+            let gridLinesHTML = '';
+            [0, 0.5, 1].forEach(ratio => {
+                const y = height - padding - ratio * (height - padding * 2);
+                const val = yMin + ratio * (yMax - yMin);
+                gridLinesHTML += `
+                    <g>
+                        <line x1="${padding}" y1="${y}" x2="${width - padding}" y2="${y}" stroke="${gridColor}" stroke-width="1" stroke-dasharray="4 4" />
+                        <text x="0" y="${y + 4}" fill="${textColor}" font-size="12" class="font-mono">$${val.toFixed(0)}T</text>
+                    </g>
+                `;
+            });
+
+            const svgHTML = `
+                <svg viewBox="0 0 ${width} ${height}" class="w-full h-full overflow-visible drop-shadow-xl">
+                    <defs>
+                        <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stop-color="${propColor}" stop-opacity="0.8" />
+                            <stop offset="100%" stop-color="${propColor}" stop-opacity="0" />
+                        </linearGradient>
+                    </defs>
+                    
+                    ${gridLinesHTML}
+
+                    <!-- Do Nothing Line -->
+                    <polyline points="${doNothingPoints}" fill="none" stroke="${baseColor}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="opacity-50" />
+
+                    <!-- Proposed Line -->
+                    <polyline points="${proposedPoints}" fill="none" stroke="${propColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0px 4px 8px ${propShadowColor})" />
+                    
+                    <!-- Area under Proposed Line -->
+                    <polygon points="${getX(0)},${height - padding} ${proposedPoints} ${getX(chartData.length - 1)},${height - padding}" fill="url(#chartGradient)" class="opacity-10 dark:opacity-20" />
+
+                    <!-- End Point Markers -->
+                    <circle cx="${getX(chartData.length - 1)}" cy="${getY(chartData[chartData.length - 1].doNothing)}" r="5" fill="${baseColor}" />
+                    <circle cx="${getX(chartData.length - 1)}" cy="${getY(chartData[chartData.length - 1].proposed)}" r="6" fill="${markerFill}" stroke="${propColor}" stroke-width="3" />
+                </svg>
+            `;
+
+            DOM.chartContainer.innerHTML = svgHTML;
+        }
+
+        function updateDonutChart(spending, revenue, growth) {
+            const total = spending + revenue + growth;
+            const circumference = 2 * Math.PI * 40; 
+            
+            if (total === 0) {
+                DOM.donuts.spending.style.strokeDasharray = `0 ${circumference}`;
+                DOM.donuts.revenue.style.strokeDasharray = `0 ${circumference}`;
+                DOM.donuts.growth.style.strokeDasharray = `0 ${circumference}`;
+                return;
+            }
+
+            const sPct = spending / total;
+            const rPct = revenue / total;
+            const gPct = growth / total;
+
+            const sDash = sPct * circumference;
+            const rDash = rPct * circumference;
+            const gDash = gPct * circumference;
+
+            DOM.donuts.spending.style.strokeDasharray = `${sDash} ${circumference}`;
+            DOM.donuts.spending.style.strokeDashoffset = `0`;
+            
+            DOM.donuts.revenue.style.strokeDasharray = `${rDash} ${circumference}`;
+            DOM.donuts.revenue.style.strokeDashoffset = `-${sDash}`;
+
+            DOM.donuts.growth.style.strokeDasharray = `${gDash} ${circumference}`;
+            DOM.donuts.growth.style.strokeDashoffset = `-${sDash + rDash}`;
+        }
+
+        function updateCalculations() {
+            let catSavings = { spending: 0, revenue: 0, growth: 0 };
+            
+            policyDefs.forEach(def => {
+                const val = policies[def.id];
+                const gen = (val - def.base) * def.conversion;
+                catSavings[def.category] += gen;
+            });
+
+            // Update subtotals
+            DOM.subtotals.spending.innerText = `+$${catSavings.spending.toFixed(0)}B/yr`;
+            DOM.subtotals.revenue.innerText = `+$${catSavings.revenue.toFixed(0)}B/yr`;
+            DOM.subtotals.growth.innerText = `+$${catSavings.growth.toFixed(0)}B/yr`;
+
+            // Update Donut
+            updateDonutChart(catSavings.spending, catSavings.revenue, catSavings.growth);
+
+            const totalAnnualSavingsBillion = catSavings.spending + catSavings.revenue + catSavings.growth;
+            const totalAnnualSavingsTrillion = totalAnnualSavingsBillion / 1000;
+            const originalAnnualDeficit = state.config.annualDeficit;
+            const newAnnualDeficit = originalAnnualDeficit - totalAnnualSavingsTrillion;
+            const doNothingDebt = state.config.startingDebt + (originalAnnualDeficit * state.config.years);
+            
+            // Build Chart Data
+            const chartData = [];
+            for (let i = 0; i <= state.config.years; i++) {
+                const doNothing = state.config.startingDebt + (originalAnnualDeficit * i);
+                const interestSaved = (totalAnnualSavingsTrillion * i) * 0.03 * (i / 2);
+                const proposed = state.config.startingDebt + (newAnnualDeficit * i) - interestSaved;
+                chartData.push({ year: i, doNothing, proposed });
+            }
+
+            const finalDebtWithInterest = chartData[chartData.length - 1].proposed;
+            const totalSavedOverTime = doNothingDebt - finalDebtWithInterest;
+            const isBalanced = newAnnualDeficit <= 0;
+
+            // DOM Updates
+            DOM.originalDeficitValue.innerText = `$${originalAnnualDeficit.toFixed(2)}T`;
+            DOM.newDeficitValue.innerText = `$${Math.abs(newAnnualDeficit).toFixed(2)}`;
+            DOM.yearsLabel.innerText = `${state.config.years}-Year Total Saved`;
+            DOM.totalSavedValue.innerText = `$${totalSavedOverTime.toFixed(1)}`;
+            DOM.chartSubLabel.innerText = `Projected over ${state.config.years} years`;
+            DOM.chartBaseLegend.innerText = `Baseline ($${doNothingDebt.toFixed(1)}T)`;
+            DOM.chartPropLegend.innerText = `Proposed ($${finalDebtWithInterest.toFixed(1)}T)`;
+
+            // Debt Free Math
+            if (newAnnualDeficit < 0) {
+                const surplus = Math.abs(newAnnualDeficit);
+                const years = Math.ceil(state.config.startingDebt / surplus);
+                DOM.yearsToDebtFree.innerText = `${years} Yrs`;
+                DOM.yearsToDebtFree.className = "text-3xl font-light tracking-tighter text-emerald-600 dark:text-emerald-400";
+                DOM.debtFreeSub.innerText = `At a surplus of $${(surplus*1000).toFixed(0)}B/yr.`;
+            } else {
+                DOM.yearsToDebtFree.innerText = "Never";
+                DOM.yearsToDebtFree.className = "text-3xl font-light tracking-tighter text-slate-900 dark:text-white";
+                DOM.debtFreeSub.innerText = "Requires a budget surplus to pay down principal.";
+            }
+
+            // Status Colors
+            if (isBalanced) {
+                DOM.deficitCard.className = 'col-span-2 sm:col-span-1 p-5 rounded-2xl border transition-colors duration-300 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 flex flex-col justify-between shadow-sm dark:shadow-none';
+                DOM.deficitBadge.className = 'flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-400/10 px-2 py-1 rounded-full';
+                DOM.deficitBadge.innerHTML = `<i data-lucide="check-circle-2" class="w-3 h-3"></i> Surplus`;
+                DOM.newDeficitValue.classList.replace('text-slate-900', 'text-emerald-600') || DOM.newDeficitValue.classList.replace('text-white', 'text-emerald-400');
+            } else {
+                DOM.deficitCard.className = 'col-span-2 sm:col-span-1 p-5 rounded-2xl border transition-colors duration-300 bg-white dark:bg-zinc-900/40 border-slate-200 dark:border-zinc-800 flex flex-col justify-between shadow-sm dark:shadow-none';
+                DOM.deficitBadge.className = 'flex items-center gap-1 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-400/10 px-2 py-1 rounded-full';
+                DOM.deficitBadge.innerHTML = `<i data-lucide="shield-alert" class="w-3 h-3"></i> Deficit`;
+                DOM.newDeficitValue.classList.replace('text-emerald-600', 'text-slate-900') || DOM.newDeficitValue.classList.replace('text-emerald-400', 'text-white');
+            }
+
+            lucide.createIcons();
+            const minDebt = Math.min(...chartData.map(d => Math.min(d.doNothing, d.proposed)));
+            const maxDebt = Math.max(...chartData.map(d => Math.max(d.doNothing, d.proposed)));
+            renderChart(chartData, minDebt, maxDebt);
+        }
+
+        // Setup Events
+        function initApp() {
+            DOM.cfgStartingDebt.value = state.config.startingDebt;
+            DOM.cfgAnnualDeficit.value = state.config.annualDeficit;
+            DOM.cfgYears.value = state.config.years;
+
+            // Target Mode Events
+            DOM.targetModeToggle.addEventListener('change', (e) => {
+                state.targetMode = e.target.checked;
+                DOM.targetYearsInput.disabled = !state.targetMode;
+                
+                if (state.targetMode) {
+                    DOM.targetModeLabel.innerText = "Enabled";
+                    DOM.targetModeLabel.classList.replace('text-slate-600', 'text-cyan-600');
+                    DOM.targetModeLabel.classList.replace('dark:text-zinc-400', 'dark:text-cyan-400');
+                    DOM.targetInputWrapper.classList.remove('opacity-50');
+                    enforceTarget();
+                    updateAllSliderUI();
+                    updateCalculations();
+                } else {
+                    DOM.targetModeLabel.innerText = "Disabled";
+                    DOM.targetModeLabel.classList.replace('text-cyan-600', 'text-slate-600');
+                    DOM.targetModeLabel.classList.replace('dark:text-cyan-400', 'dark:text-zinc-400');
+                    DOM.targetInputWrapper.classList.add('opacity-50');
+                    DOM.targetStatus.classList.add('hidden');
+                }
+            });
+
+            DOM.targetYearsInput.addEventListener('input', (e) => {
+                let val = parseInt(e.target.value);
+                if (val > 0) {
+                    state.targetYears = val;
+                    if (state.targetMode) {
+                        enforceTarget();
+                        updateAllSliderUI();
+                        updateCalculations();
+                    }
+                }
+            });
+
+            // Config Events
+            const handleConfigInput = (e) => {
+                const val = parseFloat(e.target.value) || 0;
+                if (e.target.id === 'cfgStartingDebt') state.config.startingDebt = val;
+                if (e.target.id === 'cfgAnnualDeficit') state.config.annualDeficit = val;
+                if (e.target.id === 'cfgYears') state.config.years = val;
+                updateCalculations();
+                if (state.targetMode) { enforceTarget(); updateAllSliderUI(); updateCalculations(); }
+            };
+
+            DOM.cfgStartingDebt.addEventListener('input', handleConfigInput);
+            DOM.cfgAnnualDeficit.addEventListener('input', handleConfigInput);
+            DOM.cfgYears.addEventListener('input', handleConfigInput);
+
+            document.getElementById('toggleSettingsBtn').addEventListener('click', () => {
+                state.showSettings = !state.showSettings;
+                if (state.showSettings) DOM.settingsPanel.classList.remove('hidden');
+                else DOM.settingsPanel.classList.add('hidden');
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                if(state.targetMode) DOM.targetModeToggle.click();
+                policyDefs.forEach(p => {
+                    policies[p.id] = p.base;
+                    state.customBounds[p.id] = { min: p.min, max: p.max };
+                });
+                state.lockedPolicies = {}; 
+                renderSliders();
+                lucide.createIcons();
+                updateCalculations();
+                showToast("All policies reset to baseline");
+            });
+
+            DOM.exportBtn.addEventListener('click', () => {
+                const exportData = {
+                    app: "AreWeCooked National Debt Solver",
+                    exportDate: new Date().toISOString(),
+                    baselineConfig: state.config,
+                    targetMode: {
+                        enabled: state.targetMode,
+                        years: state.targetYears
+                    },
+                    policies: policies,
+                    locks: state.lockedPolicies,
+                    bounds: state.customBounds
+                };
+                
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+                const dlAnchorElem = document.createElement('a');
+                dlAnchorElem.setAttribute("href", dataStr);
+                dlAnchorElem.setAttribute("download", "arewecooked-plan.json");
+                document.body.appendChild(dlAnchorElem);
+                dlAnchorElem.click();
+                dlAnchorElem.remove();
+                showToast("Plan exported successfully");
+            });
+
+            DOM.importBtn.addEventListener('click', () => {
+                DOM.fileInput.click();
+            });
+
+            DOM.fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.app !== "AreWeCooked National Debt Solver" && data.app !== "MacroFix National Debt Solver") {
+                            showToast("Invalid file format.", true);
+                            return;
+                        }
+
+                        // Restore State
+                        if (data.baselineConfig) state.config = { ...state.config, ...data.baselineConfig };
+                        if (data.locks) state.lockedPolicies = { ...data.locks };
+                        if (data.bounds) state.customBounds = { ...data.bounds };
+                        if (data.policies) {
+                            Object.keys(data.policies).forEach(k => {
+                                policies[k] = data.policies[k];
+                            });
+                        }
+
+                        // Update Settings UI
+                        DOM.cfgStartingDebt.value = state.config.startingDebt;
+                        DOM.cfgAnnualDeficit.value = state.config.annualDeficit;
+                        DOM.cfgYears.value = state.config.years;
+
+                        // Re-render sliders first to construct new HTML elements with bounds/locks
+                        renderSliders();
+                        lucide.createIcons();
+                        
+                        // Handle Target Mode setup last
+                        if (data.targetMode) {
+                            state.targetMode = data.targetMode.enabled || false;
+                            state.targetYears = data.targetMode.years || 30;
+                            
+                            DOM.targetModeToggle.checked = state.targetMode;
+                            DOM.targetYearsInput.value = state.targetYears;
+                            DOM.targetYearsInput.disabled = !state.targetMode;
+                            
+                            if (state.targetMode) {
+                                DOM.targetModeLabel.innerText = "Enabled";
+                                DOM.targetModeLabel.classList.replace('text-slate-600', 'text-cyan-600');
+                                DOM.targetModeLabel.classList.replace('dark:text-zinc-400', 'dark:text-cyan-400');
+                                DOM.targetInputWrapper.classList.remove('opacity-50');
+                            } else {
+                                DOM.targetModeLabel.innerText = "Disabled";
+                                DOM.targetModeLabel.classList.replace('text-cyan-600', 'text-slate-600');
+                                DOM.targetModeLabel.classList.replace('dark:text-cyan-400', 'dark:text-zinc-400');
+                                DOM.targetInputWrapper.classList.add('opacity-50');
+                                DOM.targetStatus.classList.add('hidden');
+                            }
+                        }
+
+                        updateCalculations();
+                        showToast("Plan imported successfully");
+
+                        // Reset input so same file can be loaded again
+                        DOM.fileInput.value = '';
+
+                    } catch (err) {
+                        showToast("Error parsing JSON file.", true);
+                        console.error(err);
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+            initTheme();
+            renderPresets();
+            renderSliders();
+            lucide.createIcons();
+            updateCalculations();
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
